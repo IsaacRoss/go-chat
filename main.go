@@ -3,9 +3,11 @@ package main
 
 import (
 	"flag"
+	"github.com/isaacross/trace"
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
 )
@@ -29,6 +31,7 @@ func main() {
 	var addr = flag.String("addr", ":8080", "the address of the app")
 	flag.Parse()
 	r := newRoom()
+	r.tracer = trace.New(os.Stdout)
 	http.Handle("/", &templateHandler{filename: "chat.html"})
 	http.Handle("/room", r)
 	// start room
