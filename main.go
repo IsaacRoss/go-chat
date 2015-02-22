@@ -2,8 +2,11 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"github.com/isaacross/trace"
+	"github.com/stretchr/gomniauth"
+	"github.com/stretchr/gomniauth/providers/github"
 	"html/template"
 	"log"
 	"net/http"
@@ -19,6 +22,11 @@ type templateHandler struct {
 	templ    *template.Template
 }
 
+type Configuration struct {
+	Key    string
+	Secret string
+}
+
 // serveHTTP handles the HTTP request.
 func (t *templateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	t.once.Do(func() {
@@ -27,9 +35,24 @@ func (t *templateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	t.templ.Execute(w, r)
 }
 
+func GetConfiguration(f *os.File) Configuration {
+	decoder := json.NewDecoder(f)
+	configuration := Configuration{}
+	err := decoder.Decode(&configuration)
+	if err != nil {
+		log.Fatal("Can not read config")
+	}
+	return configuration
+}
+
 func main() {
+	file, _ := os.Open("../conf.json")
+	configuration := GetConfiguration(file)
 	var addr = flag.String("addr", ":8080", "the address of the app")
 	flag.Parse()
+	//set up gomniauth
+	gomniauth.SetSecurityKey("ThereOnceWasAGirlFromAlsace")
+	gomniauth.WithProviders(github.New(configuration.Key, configuration.Secret, "http://localhost:8080/auth/callback/github"))
 	r := newRoom()
 	r.tracer = trace.New(os.Stdout)
 	http.Handle("/chat", MustAuth(&templateHandler{filename: "chat.html"}))
